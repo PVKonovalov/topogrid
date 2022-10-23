@@ -13,7 +13,7 @@ for _, node := range nodes {
 }
 
 for _, edge := range edges {
-  err = topology.AddEdge(edge.Id, 
+  err := topology.AddEdge(edge.Id, 
     edge.Terminal1, 
     edge.Terminal2, 
     edge.StateNormal, 
