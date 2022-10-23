@@ -20,9 +20,8 @@ for _, edge := range edges {
     edge.EquipmentId, 
     edge.EquipmentTypeId, 
     edge.EquipmentName)
-	
   if err != nil {
-		s.log.Errorf("%v", err)
-	}
+    log.Errorf("%v", err)
+  }
 }
 ```
