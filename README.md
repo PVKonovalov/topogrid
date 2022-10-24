@@ -52,7 +52,7 @@ for _, node := range nodes {
 }
 ```
 ### CircuitBreakersNextToNode 
-Get an array of circuit breakers id next to the node
+Get an array of IDs of circuit breakers next to the node
 ```golang
 for _, node := range nodes {
   nextTo, err := topology.CircuitBreakersNextToNode(node.Id)
