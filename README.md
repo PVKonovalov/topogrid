@@ -29,3 +29,15 @@ for _, edge := range edges {
   }
 }
 ```
+### NodeIsPoweredBy
+Get an array of nodes id with the type of equipment "TypePower" from which the specified node is powered with the current electrical state of the circuit breakers
+```golang
+for _, node := range nodes {
+  poweredBy, err := topology.NodeIsPoweredBy(node.Id)
+    if err != nil {
+      log.Errorf("%v", err)
+    }
+    log.Debugf("%d:%s <- %v:%s", node.Id, topology.EquipmentNameByNodeId(node.Id), poweredBy, topology.EquipmentNameByNodeIdArray(poweredBy))
+}
+```
+  
