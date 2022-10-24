@@ -15,6 +15,8 @@ type EquipmentStruct struct {
 	typeId          int
 	name            string
 	electricalState uint8
+	poweredBy       map[int]int64
+	switchState     int
 }
 
 type NodeStruct struct {
@@ -25,8 +27,9 @@ type NodeStruct struct {
 }
 
 type TerminalStruct struct {
-	node1Id int
-	node2Id int
+	node1Id          int
+	node2Id          int
+	numberOfSwitches int64
 }
 
 type EdgeStruct struct {
@@ -34,7 +37,6 @@ type EdgeStruct struct {
 	id          int
 	equipmentId int
 	terminal    TerminalStruct
-	state       int
 }
 
 type TopologyGridStruct struct {
@@ -49,6 +51,7 @@ type TopologyGridStruct struct {
 
 	nodeIdxFromNodeId              map[int]int   // NodeId -> NodeIdx
 	nodeIdArrayFromEquipmentTypeId map[int][]int // EquipmentTypeId -> []NodeId
+	nodeIdArrayFromEquipmentId     map[int][]int // EquipmentId -> []NodeId
 
 	edgeIdxFromEdgeId              map[int]int              // EdgeId -> EdgeIdx
 	edgeIdArrayFromEquipmentTypeId map[int][]int            // EquipmentTypeId -> []EdgeId
@@ -66,6 +69,7 @@ func New(numberOfNodes int) *TopologyGridStruct {
 		nodes:                          make([]NodeStruct, numberOfNodes),
 		nodeIdxFromNodeId:              make(map[int]int),
 		nodeIdArrayFromEquipmentTypeId: make(map[int][]int),
+		nodeIdArrayFromEquipmentId:     make(map[int][]int),
 		edgeIdArrayFromEquipmentTypeId: make(map[int][]int),
 		edgeIdxFromEdgeId:              make(map[int]int),
 		edgeIdArrayFromTerminalStruct:  make(map[TerminalStruct][]int),
@@ -133,10 +137,12 @@ func (t *TopologyGridStruct) EquipmentNameByEdgeIdArray(idArray []int) string {
 func (t *TopologyGridStruct) AddNode(id int, equipmentId int, equipmentTypeId int, equipmentName string) {
 
 	if equipmentId != 0 {
-		t.equipment[equipmentId] = EquipmentStruct{id: equipmentId,
+		t.equipment[equipmentId] = EquipmentStruct{
+			id:              equipmentId,
 			typeId:          equipmentTypeId,
 			name:            equipmentName,
 			electricalState: StateIsolated,
+			poweredBy:       make(map[int]int64),
 		}
 	}
 
@@ -144,10 +150,14 @@ func (t *TopologyGridStruct) AddNode(id int, equipmentId int, equipmentTypeId in
 
 	t.nodeIdxFromNodeId[id] = t.nodeIdx
 
+	if _, exists := t.nodeIdArrayFromEquipmentId[equipmentId]; !exists {
+		t.nodeIdArrayFromEquipmentId[equipmentId] = make([]int, 0)
+	}
+	t.nodeIdArrayFromEquipmentId[equipmentId] = append(t.nodeIdArrayFromEquipmentId[equipmentId], id)
+
 	if _, exists := t.nodeIdArrayFromEquipmentTypeId[equipmentTypeId]; !exists {
 		t.nodeIdArrayFromEquipmentTypeId[equipmentTypeId] = make([]int, 0)
 	}
-
 	t.nodeIdArrayFromEquipmentTypeId[equipmentTypeId] = append(t.nodeIdArrayFromEquipmentTypeId[equipmentTypeId], id)
 
 	t.nodeIdx += 1
@@ -161,7 +171,6 @@ func (t *TopologyGridStruct) AddEdge(id int, terminal1 int, terminal2 int, state
 			id:          id,
 			equipmentId: equipmentId,
 			terminal:    terminal,
-			state:       state,
 		})
 
 	if equipmentId != 0 {
@@ -169,10 +178,18 @@ func (t *TopologyGridStruct) AddEdge(id int, terminal1 int, terminal2 int, state
 			typeId:          equipmentTypeId,
 			name:            equipmentName,
 			electricalState: StateIsolated,
+			poweredBy:       make(map[int]int64),
+			switchState:     state,
 		}
 	}
 
 	t.edgeIdxFromEdgeId[id] = t.edgeIdx
+
+	if _, exists := t.nodeIdArrayFromEquipmentId[equipmentId]; !exists {
+		t.nodeIdArrayFromEquipmentId[equipmentId] = make([]int, 0)
+	}
+	t.nodeIdArrayFromEquipmentId[equipmentId] = append(t.nodeIdArrayFromEquipmentId[equipmentId], terminal1)
+	t.nodeIdArrayFromEquipmentId[equipmentId] = append(t.nodeIdArrayFromEquipmentId[equipmentId], terminal2)
 
 	if _, exists := t.edgeIdArrayFromTerminalStruct[terminal]; !exists {
 		t.edgeIdArrayFromTerminalStruct[terminal] = make([]int, 0)
@@ -325,8 +342,8 @@ func (t *TopologyGridStruct) BfsFromNodeId(nodeIdStart int) []TerminalStruct {
 
 	var path []TerminalStruct
 
-	graph.BFS(graph.Sort(t.currentGraph), t.nodeIdxFromNodeId[nodeIdStart], func(v, w int, _ int64) {
-		path = append(path, TerminalStruct{node1Id: t.nodes[v].id, node2Id: t.nodes[w].id})
+	graph.BFS(graph.Sort(t.currentGraph), t.nodeIdxFromNodeId[nodeIdStart], func(v, w int, c int64) {
+		path = append(path, TerminalStruct{node1Id: t.nodes[v].id, node2Id: t.nodes[w].id, numberOfSwitches: c})
 	})
 
 	return path
@@ -366,18 +383,18 @@ func (t *TopologyGridStruct) GetAsGraphMl() string {
 	for _, edge := range t.edges {
 		graphics = ""
 
-		if edge.state == 0 {
+		if t.equipment[edge.equipmentId].switchState == 0 {
 			graphics = GraphicsStateOff
 		}
 
 		if t.equipment[edge.equipmentId].typeId == TypeCircuitBreaker {
-			if edge.state == 1 {
+			if t.equipment[edge.equipmentId].switchState == 1 {
 				graphics = GraphicsCircuitBreakerOn
 			} else {
 				graphics = GraphicsCircuitBreakerOff
 			}
 		} else if t.equipment[edge.equipmentId].typeId == TypeDisconnectSwitch {
-			if edge.state == 1 {
+			if t.equipment[edge.equipmentId].switchState == 1 {
 				graphics = GraphicsDisconnectSwitchOn
 			} else {
 				graphics = GraphicsDisconnectSwitchOff
@@ -406,13 +423,18 @@ func (t *TopologyGridStruct) SetEquipmentElectricalState() {
 	}
 
 	for _, nodeIdOfPowerNode := range t.nodeIdArrayFromEquipmentTypeId[TypePower] {
+		cost := make(map[int]int64)
+
 		for _, terminal := range t.BfsFromNodeId(nodeIdOfPowerNode) {
+			cost[terminal.node2Id] += terminal.numberOfSwitches + cost[terminal.node1Id]
+
 			node := t.nodes[t.nodeIdxFromNodeId[terminal.node1Id]]
 			node.electricalState |= StateEnergized
 			t.nodes[t.nodeIdxFromNodeId[terminal.node1Id]] = node
 			if node.equipmentId != 0 {
 				equipment := t.equipment[node.equipmentId]
 				equipment.electricalState |= StateEnergized
+				equipment.poweredBy[nodeIdOfPowerNode] = cost[terminal.node1Id]
 				t.equipment[node.equipmentId] = equipment
 			}
 
@@ -421,6 +443,7 @@ func (t *TopologyGridStruct) SetEquipmentElectricalState() {
 				if edge.equipmentId != 0 {
 					equipment := t.equipment[edge.equipmentId]
 					equipment.electricalState |= StateEnergized
+					equipment.poweredBy[nodeIdOfPowerNode] = cost[terminal.node1Id]
 					t.equipment[edge.equipmentId] = equipment
 				}
 			}
@@ -431,6 +454,7 @@ func (t *TopologyGridStruct) SetEquipmentElectricalState() {
 			if node.equipmentId != 0 {
 				equipment := t.equipment[node.equipmentId]
 				equipment.electricalState |= StateEnergized
+				equipment.poweredBy[nodeIdOfPowerNode] = cost[terminal.node2Id]
 				t.equipment[node.equipmentId] = equipment
 			}
 
@@ -439,6 +463,7 @@ func (t *TopologyGridStruct) SetEquipmentElectricalState() {
 				if edge.equipmentId != 0 {
 					equipment := t.equipment[edge.equipmentId]
 					equipment.electricalState |= StateEnergized
+					equipment.poweredBy[nodeIdOfPowerNode] = cost[terminal.node2Id]
 					t.equipment[edge.equipmentId] = equipment
 				}
 			}
@@ -448,6 +473,47 @@ func (t *TopologyGridStruct) SetEquipmentElectricalState() {
 
 func (t *TopologyGridStruct) StringEquipment() {
 	for _, equipment := range t.equipment {
-		fmt.Printf("%4d:%30s:%2d\n", equipment.id, equipment.name, equipment.electricalState)
+		fmt.Printf("%4d:%30s:%2d <- %+v\n", equipment.id, equipment.name, equipment.electricalState, equipment.poweredBy)
 	}
+}
+
+// GetFurthestEquipmentFromPower returns the furthest equipment from the power supply, the ID of the power supply node,
+// and the number of switches between the power supply and the equipment
+func (t *TopologyGridStruct) GetFurthestEquipmentFromPower(equipmentIds []int) (int, int, int64) {
+	var furthestEquipmentId = 0
+	var poweredByNodeId = 0
+
+	poweredBy := make(map[int]int64)
+
+	for _, equipmentId := range equipmentIds {
+		equipment := t.equipment[equipmentId]
+		if equipment.switchState == 0 {
+			continue
+		}
+		for _poweredByNodeId, numberOfSwitches := range equipment.poweredBy {
+			if poweredBy[_poweredByNodeId] < numberOfSwitches {
+				poweredBy[_poweredByNodeId] = numberOfSwitches
+				furthestEquipmentId = equipmentId
+				poweredByNodeId = _poweredByNodeId
+			}
+		}
+	}
+
+	return furthestEquipmentId, poweredByNodeId, poweredBy[poweredByNodeId]
+}
+
+// GetFurthestEquipmentNodeIdFromPower returns the farthest (from two) equipment node id from the power source
+func (t *TopologyGridStruct) GetFurthestEquipmentNodeIdFromPower(poweredByNodeId int, equipmentId int) int {
+	var furthestNodeId = 0
+	var maxNumberOfSwitches int64 = 0
+
+	for _, nodeId := range t.nodeIdArrayFromEquipmentId[equipmentId] {
+		_, numberOfSwitches := graph.ShortestPath(t.currentGraph, t.nodeIdxFromNodeId[nodeId], t.nodeIdxFromNodeId[poweredByNodeId])
+		if maxNumberOfSwitches < numberOfSwitches {
+			maxNumberOfSwitches = numberOfSwitches
+			furthestNodeId = nodeId
+		}
+	}
+
+	return furthestNodeId
 }
