@@ -51,5 +51,15 @@ for _, node := range nodes {
     log.Debugf("%d:%s <- %v:%s", node.Id, topology.EquipmentNameByNodeId(node.Id), poweredBy, topology.EquipmentNameByNodeIdArray(poweredBy))
 }
 ```
-
+### CircuitBreakersNextToNode 
+Get an array of circuit breakers id next to the node
+```golang
+for _, node := range nodes {
+  nextTo, err := topology.CircuitBreakersNextToNode(node.Id)
+    if err != nil {
+      log.Errorf("%v", err)
+    }
+    log.Debugf("%d:%s <- %v:%s", node.Id, topology.EquipmentNameByNodeId(node.Id), poweredBy, topology.EquipmentNameByNodeIdArray(nextTo))
+}
+```
 
