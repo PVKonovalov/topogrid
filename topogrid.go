@@ -57,6 +57,7 @@ type TopologyGridStruct struct {
 	edgeIdArrayFromEquipmentTypeId map[int][]int            // EquipmentTypeId -> []EdgeId
 	edgeIdArrayFromTerminalStruct  map[TerminalStruct][]int // TerminalStruct -> []EdgeId
 	edgeIdArrayFromNodeId          map[int][]int            // NodeId -> []EdgeId
+	edgeIdArrayFromEquipmentId     map[int][]int            // EquipmentId -> []EdgeId
 	nodeIdx                        int
 	edgeIdx                        int
 }
@@ -74,6 +75,7 @@ func New(numberOfNodes int) *TopologyGridStruct {
 		edgeIdxFromEdgeId:              make(map[int]int),
 		edgeIdArrayFromTerminalStruct:  make(map[TerminalStruct][]int),
 		edgeIdArrayFromNodeId:          make(map[int][]int),
+		edgeIdArrayFromEquipmentId:     make(map[int][]int),
 		edges:                          make([]EdgeStruct, 0),
 		nodeIdx:                        0,
 		edgeIdx:                        0,
@@ -100,7 +102,7 @@ func (t *TopologyGridStruct) EquipmentNameByNodeId(id int) string {
 	}
 }
 
-//EquipmentNameByNodeIdArray returns a string with node names separated by ',' from an array of node ids
+// EquipmentNameByNodeIdArray returns a string with node names separated by ',' from an array of node ids
 func (t *TopologyGridStruct) EquipmentNameByNodeIdArray(idArray []int) string {
 	var name string
 	for i, id := range idArray {
@@ -136,6 +138,57 @@ func (t *TopologyGridStruct) EquipmentNameByEdgeIdArray(idArray []int) string {
 		name += t.EquipmentNameByEdgeId(id)
 	}
 	return name
+}
+
+// EquipmentIdByEdgeId returns equipment identifier by corresponded edge id
+func (t *TopologyGridStruct) EquipmentIdByEdgeId(edgeId int) (int, error) {
+	if edgeIdx, exists := t.edgeIdxFromEdgeId[edgeId]; exists {
+		return t.edges[edgeIdx].equipmentId, nil
+	}
+	return 0, errors.New(fmt.Sprintf("EquipmentIdByEdgeId: edge idx was not found for edge id %d", edgeId))
+}
+
+// SetSwitchStateByEquipmentId set switchState field and changes current topology graph
+func (t *TopologyGridStruct) SetSwitchStateByEquipmentId(equipmentId int, switchState int) error {
+	var err error = nil
+
+	if equipment, exists := t.equipment[equipmentId]; exists {
+		equipment.switchState = switchState
+		t.equipment[equipmentId] = equipment
+
+		var cost int64
+		if equipment.typeId == TypeCircuitBreaker {
+			cost = 1
+		} else if equipment.typeId == TypeDisconnectSwitch {
+			cost = 0
+		} else {
+			return errors.New(fmt.Sprintf("equipment id %d is not a switch", equipmentId))
+		}
+
+		for _, edgeId := range t.edgeIdArrayFromEquipmentId[equipmentId] {
+			if edgeIdx, exists := t.edgeIdxFromEdgeId[edgeId]; exists {
+				edge := t.edges[edgeIdx]
+
+				node1idx, existsNode1 := t.nodeIdxFromNodeId[edge.terminal.node1Id]
+				node2idx, existsNode2 := t.nodeIdxFromNodeId[edge.terminal.node2Id]
+
+				if existsNode1 && existsNode2 {
+					if switchState == 1 {
+						t.currentGraph.AddBothCost(node1idx, node2idx, cost)
+					} else {
+						t.currentGraph.DeleteBoth(node1idx, node2idx)
+					}
+				} else {
+					return errors.New(fmt.Sprintf("Nodes %d:%d are not found", edge.terminal.node1Id, edge.terminal.node2Id))
+				}
+			}
+		}
+
+	} else {
+		err = errors.New(fmt.Sprintf("%d - no such equipment", equipmentId))
+	}
+
+	return err
 }
 
 // AddNode to grid topology
@@ -195,6 +248,11 @@ func (t *TopologyGridStruct) AddEdge(id int, terminal1 int, terminal2 int, state
 	}
 	t.nodeIdArrayFromEquipmentId[equipmentId] = append(t.nodeIdArrayFromEquipmentId[equipmentId], terminal1)
 	t.nodeIdArrayFromEquipmentId[equipmentId] = append(t.nodeIdArrayFromEquipmentId[equipmentId], terminal2)
+
+	if _, exists := t.edgeIdArrayFromEquipmentId[equipmentId]; !exists {
+		t.edgeIdArrayFromEquipmentId[equipmentId] = make([]int, 0)
+	}
+	t.edgeIdArrayFromEquipmentId[equipmentId] = append(t.edgeIdArrayFromEquipmentId[equipmentId], id)
 
 	if _, exists := t.edgeIdArrayFromTerminalStruct[terminal]; !exists {
 		t.edgeIdArrayFromTerminalStruct[terminal] = make([]int, 0)
@@ -304,12 +362,12 @@ func (t *TopologyGridStruct) NodeCanBePoweredBy(nodeId int) ([]int, error) {
 	return poweredBy, nil
 }
 
-// CircuitBreakersNextToNode returns an array of circuit breakers id next to the node
-func (t *TopologyGridStruct) CircuitBreakersNextToNode(nodeId int) ([]int, error) {
+// GetCircuitBreakersEdgeIdsNextToNode returns an array of circuit breakers id next to the node
+func (t *TopologyGridStruct) GetCircuitBreakersEdgeIdsNextToNode(nodeId int) ([]int, error) {
 	var exists bool
 	var nodeIdx int
 	var edgeCircuitBreakerIdx int
-	circuitBreakers := make([]int, 0)
+	circuitBreakersEdgesId := make([]int, 0)
 
 	nodeIdx, exists = t.nodeIdxFromNodeId[nodeId]
 
@@ -330,16 +388,16 @@ func (t *TopologyGridStruct) CircuitBreakersNextToNode(nodeId int) ([]int, error
 		path, pathLen := graph.ShortestPath(t.fullGraph, t.nodeIdxFromNodeId[circuitBreaker.terminal.node1Id], nodeIdx)
 
 		if len(path) > 0 && pathLen == 0 {
-			circuitBreakers = append(circuitBreakers, edgeCircuitBreakerId)
+			circuitBreakersEdgesId = append(circuitBreakersEdgesId, edgeCircuitBreakerId)
 		} else {
 			path, pathLen = graph.ShortestPath(t.fullGraph, t.nodeIdxFromNodeId[circuitBreaker.terminal.node2Id], nodeIdx)
 			if len(path) > 0 && pathLen == 0 {
-				circuitBreakers = append(circuitBreakers, edgeCircuitBreakerId)
+				circuitBreakersEdgesId = append(circuitBreakersEdgesId, edgeCircuitBreakerId)
 			}
 		}
 	}
 
-	return circuitBreakers, nil
+	return circuitBreakersEdgesId, nil
 }
 
 // BfsFromNodeId traverses current graph in breadth-first order starting at nodeStart
