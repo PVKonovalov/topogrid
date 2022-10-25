@@ -81,6 +81,11 @@ func New(numberOfNodes int) *TopologyGridStruct {
 	}
 }
 
+// EquipmentNameByEquipmentId returns a string with node name from the equipment id
+func (t *TopologyGridStruct) EquipmentNameByEquipmentId(equipmentId int) string {
+	return t.equipment[equipmentId].name
+}
+
 // EquipmentNameByNodeIdx returns a string with node name from the node index
 func (t *TopologyGridStruct) EquipmentNameByNodeIdx(idx int) string {
 	return t.equipment[t.nodes[idx].equipmentId].name
