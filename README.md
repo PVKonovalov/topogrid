@@ -2,6 +2,11 @@
 Package topogrid contains implementations of basic power grid algorithms based on the grid topology.
 We use three main things - node, edge and equipment. Each power equipment can be represented as a topological node or edge.
 
+## List of terms and abbreviations
+* Edge: A link between two nodes.
+* Node: The name for any single junction. Nodes are connected to one another by edges.
+* Terminal: The endpoint of a power grid equipment, represented by node.
+
 ## Database
 The power system topology is stored in the database as a set of tables.
 ![Configuration database schema](database/TopoGridDatabase.png)
