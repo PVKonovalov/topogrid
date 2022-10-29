@@ -8,6 +8,9 @@ We use three main things - node, edge and equipment. Each power equipment can be
 * Terminal: The endpoint of a power grid equipment, represented by node.
 ## Distribution grid example
 ![Configuration database schema](assets/ExampleGrid.png)
+
+## Graph example
+![Graph example](assets/ExampleGridGraph.svg)
 ## Database
 The power system topology is stored in the database as a set of tables.
 ![Configuration database schema](assets/TopoGridDatabase.png)
