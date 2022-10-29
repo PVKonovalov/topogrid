@@ -6,7 +6,7 @@ We use three main things - node, edge and equipment. Each power equipment can be
 * Edge: A link between two nodes.
 * Node: The name for any single junction. Nodes are connected to one another by edges.
 * Terminal: The endpoint of a power grid equipment, represented by node.
-## Example grid
+## Distribution grid example
 ![Configuration database schema](assets/ExampleGrid.png)
 ## Database
 The power system topology is stored in the database as a set of tables.
