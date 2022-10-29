@@ -419,8 +419,8 @@ func (t *TopologyGridStruct) GetAsGraphMl() string {
 
 	const GraphicsPower = "\n    graphics\n    [\n      type \"star6\"\n      fill \"#FF0000\"\n    ]"
 	const GraphicsConsumer = "\n    graphics\n    [\n      type \"triangle\"\n      fill \"#FFCC00\"\n    ]"
-	const GraphicsJoin = "\n    graphics\n    [\n      type \"ellipse\"\n      fill \"#808080\"\n    ]"
-	const GraphicsLine = "\n    graphics\n    [\n      type \"rectangle\"\n      fill \"#FF8080\"\n    ]"
+	const GraphicsJoin = "\n    graphics\n    [\n      type \"ellipse\"\n      fill \"#808080\"\n      w 5.0\n      h 5.0\n    ]"
+	const GraphicsLine = "\n    graphics\n    [\n      type \"rectangle\"\n      fill \"#FF8080\"\n      w 40.0\n      h 10.0\n    ]"
 
 	const GraphicsStateOff = "\n    graphics\n    [\n    style \"dotted\"\n      fill \"#000000\"\n    ]"
 	const GraphicsCircuitBreakerOn = "\n    graphics\n    [\n    fill \"#FF0000\"\n    ]"
@@ -429,6 +429,10 @@ func (t *TopologyGridStruct) GetAsGraphMl() string {
 	const GraphicsDisconnectSwitchOff = "\n    graphics\n    [\n    style \"dotted\"\n      fill \"#00FF00\"\n    ]"
 
 	for _, node := range t.nodes {
+
+		//if t.equipment[node.equipmentId].typeId == TypeConsumer {
+		//	continue
+		//}
 
 		if t.equipment[node.equipmentId].typeId == TypePower {
 			graphics = GraphicsPower
@@ -445,6 +449,18 @@ func (t *TopologyGridStruct) GetAsGraphMl() string {
 
 	for _, edge := range t.edges {
 		graphics = ""
+
+		//nodeIdx := t.nodeIdxFromNodeId[edge.terminal.node1Id]
+		//node := t.nodes[nodeIdx]
+		//if t.equipment[node.equipmentId].typeId == TypeConsumer {
+		//	continue
+		//}
+		//
+		//nodeIdx = t.nodeIdxFromNodeId[edge.terminal.node2Id]
+		//node = t.nodes[nodeIdx]
+		//if t.equipment[node.equipmentId].typeId == TypeConsumer {
+		//	continue
+		//}
 
 		if t.equipment[edge.equipmentId].switchState == 0 {
 			graphics = GraphicsStateOff
