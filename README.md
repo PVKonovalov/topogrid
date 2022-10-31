@@ -105,8 +105,26 @@ Returns a string with node name from the node id
 func (t *TopologyGridStruct) EquipmentNameByEdgeId(id int) string
 ```
 
+### EquipmentNameByEdgeIdArray
+Returns a string with node names separated by ',' from an array of node ids
+```go
+func (t *TopologyGridStruct) EquipmentNameByEdgeIdArray(idArray []int) string
+```
+
+### EquipmentIdByEdgeId
+Returns equipment identifier by corresponded edge id
+```go
+func (t *TopologyGridStruct) EquipmentIdByEdgeId(edgeId int) (int, error)
+```
+
+### SetSwitchStateByEquipmentId
+Set switchState field and changes current topology graph
+```go
+func (t *TopologyGridStruct) SetSwitchStateByEquipmentId(equipmentId int, switchState int) error
+```
+
 ### NodeIsPoweredBy
-Get an array of nodes id with the type of equipment "TypePower" from which the specified node is powered with the current electrical state (On/Off) of the circuit breakers
+Get an array of nodes id with the type of equipment "TypePower" from which the specified node is powered with the current 'switchState' (On/Off) of the circuit breakers
 ```go
 for _, node := range nodes {
   poweredBy, err := topology.NodeIsPoweredBy(node.Id)
@@ -117,7 +135,7 @@ for _, node := range nodes {
 }
 ```
 ### NodeCanBePoweredBy 
-Get an array of nodes id with the type of equipment "Power", from which the specified node can be powered regardless of the current electrical state (On/Off) of the circuit breakers
+Get an array of nodes id with the type of equipment "Power", from which the specified node can be powered regardless of the current 'switchState'  (On/Off) of the circuit breakers
 ```go
 for _, node := range nodes {
   poweredBy, err := topology.NodeCanBePoweredBy(node.Id)
