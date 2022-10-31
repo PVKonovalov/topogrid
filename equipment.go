@@ -1,6 +1,6 @@
 package topogrid
 
-// Equipment States
+// Equipment electrical states
 const (
 	StateIsolated    uint8 = 0x00
 	StateEnergized   uint8 = 0x01

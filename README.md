@@ -15,7 +15,7 @@ The [wonderful library](https://github.com/yourbasic/graph) is used to represent
 ## Database
 The power system topology is stored in the database as a set of tables.
 ![Configuration database schema](assets/TopoGridDatabase.png)
-## Using
+## Usage
 
 ```go
 type EquipmentStruct struct {
@@ -178,4 +178,32 @@ for _, node := range nodes {
     log.Debugf("%d:%s <- %v:%s", node.Id, topology.EquipmentNameByNodeId(node.Id), poweredBy, topology.EquipmentNameByNodeIdArray(nextTo))
 }
 ```
+### BfsFromNodeId 
+Traverses current graph in breadth-first order starting at nodeStart
+```go
+func (t *TopologyGridStruct) BfsFromNodeId(nodeIdStart int) []TerminalStruct 
+```
+### GetAsGraphMl 
+Returns a string with a graph represented by the [graph modeling language](https://en.wikipedia.org/wiki/Graph_Modelling_Language) 
+```go
+func (t *TopologyGridStruct) GetAsGraphMl() string 
+```
+
+### SetEquipmentElectricalState
+Set electrical states for equipment.
+```go
+// Equipment electrical states
+const (
+	StateIsolated    uint8 = 0x00
+	StateEnergized   uint8 = 0x01
+	StateGrounded    uint8 = 0x02
+	StateOvercurrent uint8 = 0x04
+	StateFault       uint8 = 0x08
+)
+```
+```go
+func (t *TopologyGridStruct) SetEquipmentElectricalState()
+```
+
+
 
