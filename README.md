@@ -139,6 +139,9 @@ func (t *TopologyGridStruct) AddEdge(id int, terminal1 int, terminal2 int, state
 ### NodeIsPoweredBy
 Get an array of nodes id with the type of equipment "TypePower" from which the specified node is powered with the current 'switchState' (On/Off) of the circuit breakers
 ```go
+func (t *TopologyGridStruct) NodeIsPoweredBy(nodeId int) ([]int, error)
+```
+```go
 for _, node := range nodes {
   poweredBy, err := topology.NodeIsPoweredBy(node.Id)
     if err != nil {
@@ -150,6 +153,9 @@ for _, node := range nodes {
 ### NodeCanBePoweredBy 
 Get an array of nodes id with the type of equipment "Power", from which the specified node can be powered regardless of the current 'switchState'  (On/Off) of the circuit breakers
 ```go
+func (t *TopologyGridStruct) NodeCanBePoweredBy(nodeId int) ([]int, error)
+```
+```go
 for _, node := range nodes {
   poweredBy, err := topology.NodeCanBePoweredBy(node.Id)
     if err != nil {
@@ -160,6 +166,9 @@ for _, node := range nodes {
 ```
 ### CircuitBreakersNextToNode 
 Get an array of IDs of circuit breakers next to the node. If we need to isolate some area of the electrical network, we need to find all circuit breakers near a node in that area.
+```go
+func (t *TopologyGridStruct) GetCircuitBreakersEdgeIdsNextToNode(nodeId int) ([]int, error)
+```
 ```go
 for _, node := range nodes {
   nextTo, err := topology.CircuitBreakersNextToNode(node.Id)

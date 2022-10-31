@@ -307,7 +307,7 @@ func (t *TopologyGridStruct) AddEdge(id int, terminal1 int, terminal2 int, state
 }
 
 // NodeIsPoweredBy returns an array of nodes id with the type of equipment "TypePower"
-// from which the specified node is powered with the current electricalState of the circuit breakers
+// from which the specified node is powered with the current switchState of the circuit breakers
 func (t *TopologyGridStruct) NodeIsPoweredBy(nodeId int) ([]int, error) {
 	poweredBy := make([]int, 0)
 
@@ -335,7 +335,7 @@ func (t *TopologyGridStruct) NodeIsPoweredBy(nodeId int) ([]int, error) {
 }
 
 // NodeCanBePoweredBy returns an array of nodes id with the type of equipment "Power",
-// from which the specified node can be powered regardless of the current electricalState of the circuit breakers
+// from which the specified node can be powered regardless of the current switchState of the circuit breakers
 func (t *TopologyGridStruct) NodeCanBePoweredBy(nodeId int) ([]int, error) {
 	poweredBy := make([]int, 0)
 
