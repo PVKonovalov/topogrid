@@ -6,7 +6,7 @@ package topogrid
 import (
 	"errors"
 	"fmt"
-	"grid_test/graph"
+	"github.com/yourbasic/graph"
 	"sync"
 )
 

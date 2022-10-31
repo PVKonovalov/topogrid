@@ -1,6 +1,7 @@
 # topogrid
 Package topogrid contains implementations of basic power grid algorithms based on the grid topology.
 We use three main things - node, edge and equipment. Each power equipment can be represented as a topological node or edge.
+The [wonderful library](https://github.com/yourbasic/graph) is used to represent the graph.
 
 ## List of terms and abbreviations
 * Edge: A link between two nodes.
@@ -121,6 +122,18 @@ func (t *TopologyGridStruct) EquipmentIdByEdgeId(edgeId int) (int, error)
 Set switchState field and changes current topology graph
 ```go
 func (t *TopologyGridStruct) SetSwitchStateByEquipmentId(equipmentId int, switchState int) error
+```
+
+### AddNode
+Add node to grid topology
+```go
+func (t *TopologyGridStruct) AddNode(id int, equipmentId int, equipmentTypeId int, equipmentName string)
+```
+
+### AddEdge
+Add edge to grid topology
+```go
+func (t *TopologyGridStruct) AddEdge(id int, terminal1 int, terminal2 int, state int, equipmentId int, equipmentTypeId int, equipmentName string) error
 ```
 
 ### NodeIsPoweredBy
