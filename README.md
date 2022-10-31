@@ -15,7 +15,38 @@ We use three main things - node, edge and equipment. Each power equipment can be
 The power system topology is stored in the database as a set of tables.
 ![Configuration database schema](assets/TopoGridDatabase.png)
 ## Using
-```golang
+
+```go
+type EquipmentStruct struct {
+	id              int
+	typeId          int
+	name            string
+	electricalState uint8
+	poweredBy       map[int]int64
+	switchState     int
+}
+
+type NodeStruct struct {
+	idx             int
+	id              int
+	equipmentId     int
+	electricalState uint8
+}
+
+type TerminalStruct struct {
+	node1Id          int
+	node2Id          int
+	numberOfSwitches int64
+}
+
+type EdgeStruct struct {
+	idx         int
+	id          int
+	equipmentId int
+	terminal    TerminalStruct
+}
+```
+```go
 topology := topogrid.New(len(nodes))
 
 for _, node := range nodes {
@@ -38,9 +69,21 @@ for _, edge := range edges {
   }
 }
 ```
+### EquipmentNameByEquipmentId
+Returns a string with node name from the equipment id
+```go
+func (t *TopologyGridStruct) EquipmentNameByEquipmentId(equipmentId int) string
+```
+
+### EquipmentNameByNodeIdx 
+Returns a string with node name from the node index
+```go
+func (t *TopologyGridStruct) EquipmentNameByNodeIdx(idx int) string
+```
+
 ### NodeIsPoweredBy
 Get an array of nodes id with the type of equipment "TypePower" from which the specified node is powered with the current electrical state (On/Off) of the circuit breakers
-```golang
+```go
 for _, node := range nodes {
   poweredBy, err := topology.NodeIsPoweredBy(node.Id)
     if err != nil {
@@ -51,7 +94,7 @@ for _, node := range nodes {
 ```
 ### NodeCanBePoweredBy 
 Get an array of nodes id with the type of equipment "Power", from which the specified node can be powered regardless of the current electrical state (On/Off) of the circuit breakers
-```golang
+```go
 for _, node := range nodes {
   poweredBy, err := topology.NodeCanBePoweredBy(node.Id)
     if err != nil {
@@ -62,7 +105,7 @@ for _, node := range nodes {
 ```
 ### CircuitBreakersNextToNode 
 Get an array of IDs of circuit breakers next to the node. If we need to isolate some area of the electrical network, we need to find all circuit breakers near a node in that area.
-```golang
+```go
 for _, node := range nodes {
   nextTo, err := topology.CircuitBreakersNextToNode(node.Id)
     if err != nil {
