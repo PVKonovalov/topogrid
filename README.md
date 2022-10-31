@@ -81,6 +81,30 @@ Returns a string with node name from the node index
 func (t *TopologyGridStruct) EquipmentNameByNodeIdx(idx int) string
 ```
 
+###  EquipmentNameByNodeId
+Returns a string with node name from the node id
+```go
+func (t *TopologyGridStruct) EquipmentNameByNodeId(id int) string
+```
+
+### EquipmentNameByNodeIdArray
+Returns a string with node names separated by ',' from an array of node ids
+```go
+func (t *TopologyGridStruct) EquipmentNameByNodeIdArray(idArray []int) string
+```
+
+### EquipmentNameByEdgeIdx
+Returns a string with node name from the node index
+```go
+func (t *TopologyGridStruct) EquipmentNameByEdgeIdx(idx int) string
+```
+
+### EquipmentNameByEdgeId
+Returns a string with node name from the node id
+```go
+func (t *TopologyGridStruct) EquipmentNameByEdgeId(id int) string
+```
+
 ### NodeIsPoweredBy
 Get an array of nodes id with the type of equipment "TypePower" from which the specified node is powered with the current electrical state (On/Off) of the circuit breakers
 ```go
