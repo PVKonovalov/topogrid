@@ -191,6 +191,7 @@ func (t *TopologyGridStruct) GetAsGraphMl() string
 
 ### SetEquipmentElectricalState
 Set electrical states for equipment.
+![Configuration database schema](assets/ElectricalState.svg)
 ```go
 // Equipment electrical states
 const (
