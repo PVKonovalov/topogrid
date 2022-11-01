@@ -12,7 +12,11 @@ Consumer transformer substations, ground (earth) etc.
 * Terminal: The endpoint of a power grid equipment, represented by node.
 ## Distribution grid example
 ![Configuration database schema](assets/ExampleGrid.png)
-
+* FSW - feeder switch
+* REC - recloser (Automatic circuit breaker with reclosing function)
+* DS - disconnect switch
+* TS - transformer substation (consumer)
+* SW - switch (SW10 - bus coupler circuit breaker)
 ## Graph example
 ![Graph example](assets/ExampleGridGraph.svg)
 ## Database
