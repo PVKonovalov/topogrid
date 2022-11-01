@@ -4,8 +4,11 @@ We use three main things - node, edge and equipment. Each power equipment can be
 The [wonderful library](https://github.com/yourbasic/graph) is used to represent the graph.
 
 ## List of terms and abbreviations
-* Edge: A link between two nodes.
-* Node: The name for any single junction. Nodes are connected to one another by edges.
+* Edge: A link between two nodes. From the point of view of electrical network equipment, edge can imagine circuit 
+breakers, disconnectors, power transformers, earthing switches, etc. All electrical network equipment with more 
+than one terminal.
+* Node: The name for any single junction. Nodes are connected to one another by edges. E.g. power supply, DERs, 
+Consumer transformer substations, ground (earth) etc. 
 * Terminal: The endpoint of a power grid equipment, represented by node.
 ## Distribution grid example
 ![Configuration database schema](assets/ExampleGrid.png)
