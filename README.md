@@ -1,4 +1,4 @@
-# topogrid
+# Topogrid
 Package topogrid contains implementations of basic power grid algorithms based on the grid topology.
 We use three main things - node, edge and equipment. Each power equipment can be represented as a topological node or edge.
 The [wonderful library](https://github.com/yourbasic/graph) is used to represent the graph.
@@ -195,7 +195,7 @@ func (t *TopologyGridStruct) GetAsGraphMl() string
 ```
 
 ### SetEquipmentElectricalState
-Set electrical states for equipment.
+Set electrical states for equipment. Use this method to set colors on your single line diagram (SLD).
 ![Configuration database schema](assets/ElectricalState.svg)
 ```go
 // Equipment electrical states
