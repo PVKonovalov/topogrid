@@ -166,6 +166,8 @@ for _, node := range nodes {
 ```
 ### CircuitBreakersNextToNode 
 Get an array of IDs of circuit breakers next to the node. If we need to isolate some area of the electrical network, we need to find all circuit breakers near a node in that area.
+![Next to node](assets/NextToNode.png)
+
 ```go
 func (t *TopologyGridStruct) GetCircuitBreakersEdgeIdsNextToNode(nodeId int) ([]int, error)
 ```
