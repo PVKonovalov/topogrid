@@ -145,7 +145,7 @@ func (t *TopologyGridStruct) AddEdge(id int, terminal1 int, terminal2 int, state
 
 ### NodeIsPoweredBy
 Get an array of nodes id with the type of equipment "TypePower" from which the specified node is powered with the current 'switchState' (On/Off) of the circuit breakers
-![Node is powered by](assets/PoweredBy.png)
+![Node is powered by](assets/IsPoweredBy.png)
 ```go
 func (t *TopologyGridStruct) NodeIsPoweredBy(nodeId int) ([]int, error)
 ```
@@ -160,6 +160,7 @@ for _, node := range nodes {
 ```
 ### NodeCanBePoweredBy 
 Get an array of nodes id with the type of equipment "Power", from which the specified node can be powered regardless of the current 'switchState'  (On/Off) of the circuit breakers
+![Node is powered by](assets/CanBePoweredBy.png)
 ```go
 func (t *TopologyGridStruct) NodeCanBePoweredBy(nodeId int) ([]int, error)
 ```
