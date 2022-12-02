@@ -10,6 +10,16 @@ import (
 	"sync"
 )
 
+const (
+	SwitchStateOpen  = 0
+	SwitchStateClose = 1
+)
+
+var ErrBothAreEnergized = errors.New("both segments are already energized")
+var ErrEnergizedWillBeGrounded = errors.New("energized segment will be grounded")
+var ErrSwitchIsAlreadyClosed = errors.New("switch is already closed")
+var ErrEquipmentNotFound = errors.New("equipment not found")
+
 type EquipmentStruct struct {
 	id              int
 	typeId          int
@@ -88,6 +98,18 @@ func (t *TopologyGridStruct) EquipmentNameByEquipmentId(equipmentId int) string 
 	return t.equipment[equipmentId].name
 }
 
+// EquipmentNameByEquipmentIdArray returns a string with node name from the equipment id
+func (t *TopologyGridStruct) EquipmentNameByEquipmentIdArray(equipmentIdArray []int) string {
+	var name string
+	for i, equipmentId := range equipmentIdArray {
+		if i != 0 {
+			name += ","
+		}
+		name += t.equipment[equipmentId].name
+	}
+	return name
+}
+
 // EquipmentNameByNodeIdx returns a string with node name from the node index
 func (t *TopologyGridStruct) EquipmentNameByNodeIdx(idx int) string {
 	return t.equipment[t.nodes[idx].equipmentId].name
@@ -114,9 +136,31 @@ func (t *TopologyGridStruct) EquipmentNameByNodeIdArray(idArray []int) string {
 	return name
 }
 
-// EquipmentNameByEdgeIdx returns a string with node name from the node index
+func (t *TopologyGridStruct) EquipmentNameByNodeIdxArray(idxArray []int) string {
+	var name string
+	for i, idx := range idxArray {
+		if i != 0 {
+			name += ","
+		}
+		name += t.equipment[t.nodes[idx].equipmentId].name
+	}
+	return name
+}
+
+// EquipmentNameByEdgeIdx returns a string with node name by the node index
 func (t *TopologyGridStruct) EquipmentNameByEdgeIdx(idx int) string {
 	return t.equipment[t.edges[idx].equipmentId].name
+}
+
+// EquipmentElectricalStateByEquipmentId returns an equipment electrical state by the equipment id
+func (t *TopologyGridStruct) EquipmentElectricalStateByEquipmentId(id int) (uint8, bool) {
+	equipment, exists := t.equipment[id]
+	return equipment.electricalState, exists
+}
+
+func (t *TopologyGridStruct) EquipmentSwitchStateByEquipmentId(id int) (int, bool) {
+	equipment, exists := t.equipment[id]
+	return equipment.switchState, exists
 }
 
 // EquipmentNameByEdgeId returns a string with node name from the node id
@@ -174,9 +218,13 @@ func (t *TopologyGridStruct) SetSwitchStateByEquipmentId(equipmentId int, switch
 
 				if existsNode1 && existsNode2 {
 					if switchState == 1 {
+						t.Lock()
 						t.currentGraph.AddBothCost(node1idx, node2idx, cost)
+						t.Unlock()
 					} else {
+						t.Lock()
 						t.currentGraph.DeleteBoth(node1idx, node2idx)
+						t.Unlock()
 					}
 				} else {
 					return errors.New(fmt.Sprintf("Nodes %d:%d are not found", edge.terminal.node1Id, edge.terminal.node2Id))
@@ -325,7 +373,9 @@ func (t *TopologyGridStruct) NodeIsPoweredBy(nodeId int) ([]int, error) {
 			return nil, errors.New(fmt.Sprintf("node idx was not found for node id %d", nodeId))
 		}
 
+		t.RLock()
 		path, _ := graph.ShortestPath(t.currentGraph, nodeTypePowerIdx, nodeIdx)
+		t.RUnlock()
 		if len(path) > 0 {
 			poweredBy = append(poweredBy, nodeTypePowerId)
 		}
@@ -353,7 +403,10 @@ func (t *TopologyGridStruct) NodeCanBePoweredBy(nodeId int) ([]int, error) {
 			return nil, errors.New(fmt.Sprintf("node idx was not found for node id %d", nodeId))
 		}
 
+		t.RLock()
 		path, _ := graph.ShortestPath(t.fullGraph, nodeTypePowerIdx, nodeIdx)
+		t.RUnlock()
+
 		if len(path) > 0 {
 			poweredBy = append(poweredBy, nodeTypePowerId)
 		}
@@ -362,17 +415,19 @@ func (t *TopologyGridStruct) NodeCanBePoweredBy(nodeId int) ([]int, error) {
 	return poweredBy, nil
 }
 
-// GetCircuitBreakersEdgeIdsNextToNode returns an array of circuit breakers id next to the node
-func (t *TopologyGridStruct) GetCircuitBreakersEdgeIdsNextToNode(nodeId int) ([]int, error) {
+// GetCircuitBreakersEdgeIdsNextToNode returns an array of circuit breakers id next to the node and map with visited equipment ids
+func (t *TopologyGridStruct) GetCircuitBreakersEdgeIdsNextToNode(nodeId int) ([]int, map[int]bool, error) {
 	var exists bool
 	var nodeIdx int
 	var edgeCircuitBreakerIdx int
+	var visitedNodes = make(map[int]bool)
+
 	circuitBreakersEdgesId := make([]int, 0)
 
 	nodeIdx, exists = t.nodeIdxFromNodeId[nodeId]
 
 	if !exists {
-		return nil, errors.New(fmt.Sprintf("node idx was not found for node id %d", nodeId))
+		return nil, nil, errors.New(fmt.Sprintf("node idx was not found for node id %d", nodeId))
 	}
 
 	for _, edgeCircuitBreakerId := range t.edgeIdArrayFromEquipmentTypeId[TypeCircuitBreaker] {
@@ -380,24 +435,37 @@ func (t *TopologyGridStruct) GetCircuitBreakersEdgeIdsNextToNode(nodeId int) ([]
 		edgeCircuitBreakerIdx, exists = t.edgeIdxFromEdgeId[edgeCircuitBreakerId]
 
 		if !exists {
-			return nil, errors.New(fmt.Sprintf("node idx was not found for node id %d", nodeId))
+			return nil, nil, errors.New(fmt.Sprintf("node idx was not found for node id %d", nodeId))
 		}
 
 		circuitBreaker := t.edges[edgeCircuitBreakerIdx]
 
+		t.RLock()
 		path, pathLen := graph.ShortestPath(t.fullGraph, t.nodeIdxFromNodeId[circuitBreaker.terminal.node1Id], nodeIdx)
+		t.RUnlock()
 
 		if len(path) > 0 && pathLen == 0 {
 			circuitBreakersEdgesId = append(circuitBreakersEdgesId, edgeCircuitBreakerId)
+			for _, _nodeIdx := range path {
+				equipmentId := t.nodes[_nodeIdx].equipmentId
+				visitedNodes[equipmentId] = true
+			}
 		} else {
+			t.RLock()
 			path, pathLen = graph.ShortestPath(t.fullGraph, t.nodeIdxFromNodeId[circuitBreaker.terminal.node2Id], nodeIdx)
+			t.RUnlock()
+
 			if len(path) > 0 && pathLen == 0 {
 				circuitBreakersEdgesId = append(circuitBreakersEdgesId, edgeCircuitBreakerId)
+				for _, _nodeIdx := range path {
+					equipmentId := t.nodes[_nodeIdx].equipmentId
+					visitedNodes[equipmentId] = true
+				}
 			}
 		}
 	}
 
-	return circuitBreakersEdgesId, nil
+	return circuitBreakersEdgesId, visitedNodes, nil
 }
 
 // BfsFromNodeId traverses current graph in breadth-first order starting at nodeStart
@@ -408,7 +476,6 @@ func (t *TopologyGridStruct) BfsFromNodeId(nodeIdStart int) []TerminalStruct {
 	graph.BFS(graph.Sort(t.currentGraph), t.nodeIdxFromNodeId[nodeIdStart], func(v, w int, c int64) {
 		path = append(path, TerminalStruct{node1Id: t.nodes[v].id, node2Id: t.nodes[w].id, numberOfSwitches: c})
 	})
-
 	return path
 }
 
@@ -490,6 +557,7 @@ func (t *TopologyGridStruct) GetAsGraphMl() string {
 // SetEquipmentElectricalState for all equipment
 // TODO: The electrical state of the switches (edges) in the off state must be calculated by more sophisticated algorithm, since its terminals can have different electrical states.
 func (t *TopologyGridStruct) SetEquipmentElectricalState() {
+	t.Lock()
 
 	for id, equipment := range t.equipment {
 		equipment.electricalState = StateIsolated
@@ -503,6 +571,10 @@ func (t *TopologyGridStruct) SetEquipmentElectricalState() {
 
 	for _, nodeIdOfPowerNode := range t.nodeIdArrayFromEquipmentTypeId[TypePower] {
 		cost := make(map[int]int64)
+
+		node := t.nodes[t.nodeIdxFromNodeId[nodeIdOfPowerNode]]
+		node.electricalState = StateEnergized
+		t.nodes[t.nodeIdxFromNodeId[nodeIdOfPowerNode]] = node
 
 		for _, terminal := range t.BfsFromNodeId(nodeIdOfPowerNode) {
 			cost[terminal.node2Id] += terminal.numberOfSwitches + cost[terminal.node1Id]
@@ -548,12 +620,17 @@ func (t *TopologyGridStruct) SetEquipmentElectricalState() {
 			}
 		}
 	}
+	t.Unlock()
 }
 
-func (t *TopologyGridStruct) StringEquipment() {
+func (t *TopologyGridStruct) PrintfEquipments(typeId int) {
+	fmt.Printf("-- Equipment begin\n")
 	for _, equipment := range t.equipment {
-		fmt.Printf("%4d:%30s:%2d <- %+v\n", equipment.id, equipment.name, equipment.electricalState, equipment.poweredBy)
+		if typeId == TypeAllEquipment || typeId == equipment.typeId {
+			fmt.Printf("%4d:%30s:%2d:%2d <- %+v\n", equipment.id, equipment.name, equipment.switchState, equipment.electricalState, equipment.poweredBy)
+		}
 	}
+	fmt.Printf("-- Equipment end\n")
 }
 
 // GetFurthestEquipmentFromPower returns the furthest equipment from the power supply, the ID of the power supply node,
@@ -581,13 +658,15 @@ func (t *TopologyGridStruct) GetFurthestEquipmentFromPower(equipmentIds []int) (
 	return furthestEquipmentId, poweredByNodeId, poweredBy[poweredByNodeId]
 }
 
-// GetFurthestEquipmentNodeIdFromPower returns the farthest (from two) equipment node id from the power source
-func (t *TopologyGridStruct) GetFurthestEquipmentNodeIdFromPower(poweredByNodeId int, equipmentId int) int {
+// GetFurthestEquipmentTerminalIdFromPower returns the farthest (from two) equipment node id (terminal) from the power source
+func (t *TopologyGridStruct) GetFurthestEquipmentTerminalIdFromPower(poweredByNodeId int, equipmentId int) int {
 	var furthestNodeId = 0
 	var maxNumberOfSwitches int64 = 0
 
 	for _, nodeId := range t.nodeIdArrayFromEquipmentId[equipmentId] {
+		t.RLock()
 		_, numberOfSwitches := graph.ShortestPath(t.currentGraph, t.nodeIdxFromNodeId[nodeId], t.nodeIdxFromNodeId[poweredByNodeId])
+		t.RUnlock()
 		if maxNumberOfSwitches < numberOfSwitches {
 			maxNumberOfSwitches = numberOfSwitches
 			furthestNodeId = nodeId
@@ -595,4 +674,134 @@ func (t *TopologyGridStruct) GetFurthestEquipmentNodeIdFromPower(poweredByNodeId
 	}
 
 	return furthestNodeId
+}
+
+// GetCbListToEnergizeEquipment Returns a map of lists with equipment id of CBs that you must use to power up the selected equipment.
+// The mapping keys are the equipment identifier of the power nodes.
+func (t *TopologyGridStruct) GetCbListToEnergizeEquipment(equipmentId int) map[int][]int {
+
+	cbListToEnergizeEquipment := make(map[int][]int)
+
+	for _, nodeId := range t.nodeIdArrayFromEquipmentId[equipmentId] {
+		if powerNodeIdArray, err := t.NodeCanBePoweredBy(nodeId); err == nil {
+
+			for _, poweredByNodeId := range powerNodeIdArray {
+
+				pathCb := make(map[int]bool)
+
+				t.RLock()
+				path, numberOfSwitches := graph.ShortestPath(t.fullGraph, t.nodeIdxFromNodeId[nodeId], t.nodeIdxFromNodeId[poweredByNodeId])
+				t.RUnlock()
+				// fmt.Printf("%d-%d:%d [%s]\n", nodeId, poweredByNodeId, numberOfSwitches, t.EquipmentNameByNodeIdxArray(path))
+				if numberOfSwitches != 0 {
+					if len(path) > 1 {
+						for i := 0; i < len(path)-1; i++ {
+							terminal := TerminalStruct{
+								node1Id: t.nodes[path[i]].id,
+								node2Id: t.nodes[path[i+1]].id,
+							}
+
+							if edgeIdArray, exists := t.edgeIdArrayFromTerminalStruct[terminal]; exists {
+								for _, edgeId := range edgeIdArray {
+									if equipmentInPathId, err := t.EquipmentIdByEdgeId(edgeId); err == nil {
+										if t.equipment[equipmentInPathId].typeId == TypeCircuitBreaker {
+											pathCb[equipmentInPathId] = true
+										}
+									}
+								}
+							}
+
+							terminal.node1Id, terminal.node2Id = terminal.node2Id, terminal.node1Id
+
+							if edgeIdArray, exists := t.edgeIdArrayFromTerminalStruct[terminal]; exists {
+								for _, edgeId := range edgeIdArray {
+									if equipmentInPathId, err := t.EquipmentIdByEdgeId(edgeId); err == nil {
+										if t.equipment[equipmentInPathId].typeId == TypeCircuitBreaker {
+											pathCb[equipmentInPathId] = true
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+				if len(pathCb) != 0 {
+					powerNodeEquipmentId := t.nodes[t.nodeIdxFromNodeId[poweredByNodeId]].equipmentId
+					cbListToEnergizeEquipment[powerNodeEquipmentId] = make([]int, len(pathCb))
+					i := 0
+					for equipmentCbId := range pathCb {
+						cbListToEnergizeEquipment[powerNodeEquipmentId][i] = equipmentCbId
+						i += 1
+					}
+				}
+			}
+		}
+	}
+
+	if len(cbListToEnergizeEquipment) == 0 {
+		return nil
+	}
+
+	return cbListToEnergizeEquipment
+}
+
+// CanBeSwitchedOn Checks whether the CB can be closed based on the electrical condition of its terminals
+func (t *TopologyGridStruct) CanBeSwitchedOn(cbEquipmentId int) (bool, error) {
+	var equipment EquipmentStruct
+	var existsEquipment bool
+
+	if equipment, existsEquipment = t.equipment[cbEquipmentId]; existsEquipment {
+		if equipment.switchState == SwitchStateClose {
+			return false, ErrSwitchIsAlreadyClosed
+		}
+	} else {
+		return false, ErrEquipmentNotFound
+	}
+
+	if edgeIdArray, exists := t.edgeIdArrayFromEquipmentId[cbEquipmentId]; exists {
+		for _, edgeId := range edgeIdArray {
+			edge := t.edges[t.edgeIdxFromEdgeId[edgeId]]
+
+			terminals := edge.terminal
+
+			terminal1Node := t.nodes[t.nodeIdxFromNodeId[terminals.node1Id]]
+			terminal2Node := t.nodes[t.nodeIdxFromNodeId[terminals.node2Id]]
+
+			//fmt.Printf("%s %+v %+v\n", equipment.name, terminal1Node, terminal2Node)
+
+			if terminal1Node.electricalState == StateIsolated ||
+				terminal2Node.electricalState == StateIsolated {
+				return true, nil
+			} else if terminal1Node.electricalState&StateGrounded == StateGrounded &&
+				terminal2Node.electricalState&StateGrounded == StateGrounded {
+				return true, nil
+			} else if terminal1Node.electricalState&StateEnergized == StateEnergized &&
+				terminal2Node.electricalState&StateEnergized == StateEnergized {
+				return false, ErrBothAreEnergized
+			} else if terminal1Node.electricalState&StateGrounded == StateGrounded &&
+				terminal2Node.electricalState&StateEnergized == StateEnergized {
+				return false, ErrEnergizedWillBeGrounded
+			} else if terminal1Node.electricalState&StateEnergized == StateEnergized &&
+				terminal2Node.electricalState&StateGrounded == StateGrounded {
+				return false, ErrEnergizedWillBeGrounded
+			}
+		}
+	}
+
+	return false, ErrEquipmentNotFound
+}
+
+// CopyEquipmentSwitchStateFrom form one topogrid object to this
+func (t *TopologyGridStruct) CopyEquipmentSwitchStateFrom(source *TopologyGridStruct) error {
+	source.RLock()
+	for _, equipment := range source.equipment {
+		if equipment.typeId == TypeCircuitBreaker {
+			if err := t.SetSwitchStateByEquipmentId(equipment.id, equipment.switchState); err != nil {
+				source.RUnlock()
+				return fmt.Errorf("unable copy switch state for equipment %d:%s", equipment.id, equipment.name)
+			}
+		}
+	}
+	source.RUnlock()
+	return nil
 }
