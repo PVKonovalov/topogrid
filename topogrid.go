@@ -791,10 +791,10 @@ func (t *TopologyGridStruct) CanBeSwitchedOn(cbEquipmentId int) (bool, error) {
 	return false, ErrEquipmentNotFound
 }
 
-// CopyEquipmentSwitchStateFrom form one topogrid object to this
-func (t *TopologyGridStruct) CopyEquipmentSwitchStateFrom(source *TopologyGridStruct) error {
+// CopyEquipmentSwitchState from one topogrid object to this
+func (t *TopologyGridStruct) CopyEquipmentSwitchState(from *TopologyGridStruct) error {
 	source.RLock()
-	for _, equipment := range source.equipment {
+	for _, equipment := range from.equipment {
 		if equipment.typeId == TypeCircuitBreaker {
 			if err := t.SetSwitchStateByEquipmentId(equipment.id, equipment.switchState); err != nil {
 				source.RUnlock()
