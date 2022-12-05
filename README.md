@@ -217,5 +217,9 @@ const (
 func (t *TopologyGridStruct) SetEquipmentElectricalState()
 ```
 
-
+### CopyEquipmentSwitchState
+Copy equipment switch state frim one topogrid object to this
+```go
+func (t *TopologyGridStruct) CopyEquipmentSwitchState(from *TopologyGridStruct) error
+```
 
